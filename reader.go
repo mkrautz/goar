@@ -16,6 +16,20 @@ import (
 // The Next method advances to the next file in the archive (including the first).
 // After Next has returned a header, the Reader can be treated as an io.Reader to
 // access the data of the file described by the header received from Next.
+//
+// Example:
+//	tr := ar.NewReader(r)
+//	for {
+//		hdr, err := tr.Next()
+//		if err == os.EOF {
+//			// end of archive
+//			break
+//		}
+//		if err != nil {
+//			// handle error
+//		}
+//		io.Copy(data, tr)
+//	}
 type Reader struct {
 	r          io.Reader
 	offset     int64

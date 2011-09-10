@@ -16,6 +16,17 @@ import (
 //
 // An ar archive consists of a sequence of files. Call WriteHeader to begin a new file,
 // and then call Write to supply that file's data, writing at most hdr.Size bytes in total.
+//
+// Example:
+//	aw := ar.NewWriter(w)
+//	hdr := new(ar.Header)
+//	hdr.Size = length of data in bytes
+//	// populate other hdr fields as desired
+//	if err := aw.WriteHeader(hdr); err != nil {
+//		// handle error
+//	}
+//	io.Copy(tw, data)
+//	tw.Close()
 type Writer struct {
 	w          io.Writer
 	offset     int64
