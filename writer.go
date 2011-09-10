@@ -115,8 +115,14 @@ func (aw *Writer) WriteHeader(hdr *Header) (err os.Error) {
 		newSize int64
 	)
 
-	newName = bsdLongFileNamePrefix + strconv.Itoa(len(hdr.Name))
-	newSize = hdr.Size + int64(len(hdr.Name))
+	longFn := len(hdr.Name) > 15
+	if longFn {
+		newName = bsdLongFileNamePrefix + strconv.Itoa(len(hdr.Name))
+		newSize = hdr.Size + int64(len(hdr.Name))
+	} else {
+		newName = hdr.Name
+		newSize = hdr.Size
+	}
 
 	nwritten, err := io.WriteString(aw.w, encodeArString(newName, 16))
 	aw.offset += int64(nwritten)
@@ -160,12 +166,16 @@ func (aw *Writer) WriteHeader(hdr *Header) (err os.Error) {
 		return err
 	}
 
-	nwritten, err = io.WriteString(aw.w, hdr.Name)
-	aw.offset += int64(nwritten)
-	aw.dataRemain = newSize - int64(nwritten)
-	if err != nil {
-		return err
+	if longFn {
+		nwritten, err = io.WriteString(aw.w, hdr.Name)
+		aw.offset += int64(nwritten)
+		aw.dataRemain = newSize - int64(nwritten)
+		if err != nil {
+			return err
+		}
+	} else {
+		aw.dataRemain = newSize
 	}
-
+ 
 	return nil
 }
