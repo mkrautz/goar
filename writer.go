@@ -6,7 +6,6 @@ package ar
 
 import (
 	"io"
-	"os"
 	"strconv"
 )
 
@@ -40,7 +39,7 @@ func NewWriter(w io.Writer) *Writer {
 }
 
 // Closes the ar achive, flushing any unwritten data to the underlying writer.
-func (aw *Writer) Close() os.Error {
+func (aw *Writer) Close() error {
 	err := aw.Flush()
 	if err != nil {
 		return err
@@ -50,7 +49,7 @@ func (aw *Writer) Close() os.Error {
 }
 
 // Flush finishes writing the current file (optional).
-func (aw *Writer) Flush() os.Error {
+func (aw *Writer) Flush() error {
 	if aw.closed {
 		return ErrWriteAfterClose
 	}
@@ -66,7 +65,7 @@ func (aw *Writer) Flush() os.Error {
 
 // Write writes the current entry in the ar archive. Write returns the error ErrWriteTooLong
 // if more than hdr.Size bytes are written following a call to WriteHeader.
-func (aw *Writer) Write(b []byte) (n int, err os.Error) {
+func (aw *Writer) Write(b []byte) (n int, err error) {
 	if aw.closed {
 		return 0, ErrWriteAfterClose
 	}
@@ -89,7 +88,7 @@ func (aw *Writer) Write(b []byte) (n int, err os.Error) {
 
 // WriteHeader writes hdr and prepares to accept the file's content.  WriteHeader calls Flush to
 // correctly pad the last written file. Calling after WriteHeader a Close will return ErrWriteAfterClose.
-func (aw *Writer) WriteHeader(hdr *Header) (err os.Error) {
+func (aw *Writer) WriteHeader(hdr *Header) (err error) {
 	if aw.closed {
 		return ErrWriteAfterClose
 	}
@@ -130,7 +129,7 @@ func (aw *Writer) WriteHeader(hdr *Header) (err os.Error) {
 		return err
 	}
 
-	nwritten, err = io.WriteString(aw.w, encodeArString(strconv.Itoa64(hdr.Mtime), 12))
+	nwritten, err = io.WriteString(aw.w, encodeArString(strconv.FormatInt(hdr.Mtime, 10), 12))
 	aw.offset += int64(nwritten)
 	if err != nil {
 		return err
@@ -148,13 +147,13 @@ func (aw *Writer) WriteHeader(hdr *Header) (err os.Error) {
 		return err
 	}
 
-	nwritten, err = io.WriteString(aw.w, encodeArString(strconv.Itob64(hdr.Mode, 8), 8))
+	nwritten, err = io.WriteString(aw.w, encodeArString(strconv.FormatInt(hdr.Mode, 8), 8))
 	aw.offset += int64(nwritten)
 	if err != nil {
 		return err
 	}
 
-	nwritten, err = io.WriteString(aw.w, encodeArString(strconv.Itoa64(newSize), 10))
+	nwritten, err = io.WriteString(aw.w, encodeArString(strconv.FormatInt(newSize, 10), 10))
 	aw.offset += int64(nwritten)
 	if err != nil {
 		return err
@@ -176,6 +175,6 @@ func (aw *Writer) WriteHeader(hdr *Header) (err os.Error) {
 	} else {
 		aw.dataRemain = newSize
 	}
- 
+
 	return nil
 }

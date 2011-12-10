@@ -5,8 +5,9 @@
 package ar
 
 import (
+	"errors"
 	"io"
-	"os"
+
 	"strconv"
 	"strings"
 )
@@ -43,7 +44,7 @@ func NewReader(r io.Reader) *Reader {
 }
 
 // Next advances to the next entry in the archive.
-func (ar *Reader) Next() (hdr *Header, err os.Error) {
+func (ar *Reader) Next() (hdr *Header, err error) {
 	// If this is our first read, we should check whether a global
 	// ar header is present.
 	if ar.offset == 0 {
@@ -61,12 +62,12 @@ func (ar *Reader) Next() (hdr *Header, err os.Error) {
 	// If an entry wasn't fully read, skip the remaining bytes
 	if ar.dataRemain > 0 {
 		sw := skippingWriter{}
-		ncopied, err := io.Copyn(sw, ar.r, ar.dataRemain)
-		if err == os.EOF || err == nil {
+		ncopied, err := io.CopyN(sw, ar.r, ar.dataRemain)
+		if err == io.EOF || err == nil {
 			ar.offset += ncopied
 			ar.dataRemain -= ncopied
 			if ar.dataRemain > 0 {
-				return nil, os.NewError("ar: skip failed")
+				return nil, errors.New("ar: skip failed")
 			}
 		} else if err != nil {
 			return nil, err
@@ -85,7 +86,7 @@ func (ar *Reader) Next() (hdr *Header, err os.Error) {
 		// Return an error if we've already read a GNU long filename
 		// section.
 		if ar.gnuLongFn != nil {
-			return nil, os.NewError("ar: malformed archive, duplicate gnu long filename sections")
+			return nil, errors.New("ar: malformed archive, duplicate gnu long filename sections")
 		}
 
 		ar.dataRemain = hdr.Size
@@ -114,9 +115,9 @@ func (ar *Reader) Next() (hdr *Header, err os.Error) {
 // Read reads from the current entry in the archive.
 // It returns 0, os.EOF when it reaches the end of that entry,
 // until Next is called to advance to the next entry.
-func (ar *Reader) Read(b []byte) (n int, err os.Error) {
+func (ar *Reader) Read(b []byte) (n int, err error) {
 	if ar.dataRemain == 0 {
-		return 0, os.EOF
+		return 0, io.EOF
 	}
 	if int64(len(b)) > ar.dataRemain {
 		b = b[:ar.dataRemain]
@@ -124,12 +125,12 @@ func (ar *Reader) Read(b []byte) (n int, err os.Error) {
 	n, err = ar.r.Read(b)
 	ar.dataRemain -= int64(n)
 	if ar.dataRemain == 0 {
-		err = os.EOF
+		err = io.EOF
 	}
 	return
 }
 
-func (ar *Reader) consumeHeader() (*Header, os.Error) {
+func (ar *Reader) consumeHeader() (*Header, error) {
 	// Data sections are required to always end on a 2-byte boundary.
 	// Simply check if we're at a 2-byte offset before consuming a new
 	// file header. If not, consume the padding byte and check that it
@@ -139,7 +140,7 @@ func (ar *Reader) consumeHeader() (*Header, os.Error) {
 		_, err := ar.r.Read(lineFeed)
 		if err != nil {
 			if lineFeed[0] != '\n' {
-				return nil, os.NewError("ar: alignment byte read, not '\n'")
+				return nil, errors.New("ar: alignment byte read, not '\n'")
 			}
 		}
 		ar.offset += 1
@@ -165,7 +166,7 @@ func (ar *Reader) consumeHeader() (*Header, os.Error) {
 		return nil, ErrFileHeader
 	}
 
-	hdr.Mtime, err = strconv.Atoi64(mtime)
+	hdr.Mtime, err = strconv.ParseInt(mtime, 10, 64)
 	if err != nil {
 		return nil, err
 	}
@@ -180,12 +181,12 @@ func (ar *Reader) consumeHeader() (*Header, os.Error) {
 		return nil, err
 	}
 
-	hdr.Size, err = strconv.Atoi64(size)
+	hdr.Size, err = strconv.ParseInt(size, 10, 64)
 	if err != nil {
 		return nil, err
 	}
 
-	hdr.Mode, err = strconv.Btoi64(mode, 8)
+	hdr.Mode, err = strconv.ParseInt(mode, 8, 64)
 	if err != nil {
 		return nil, err
 	}
@@ -207,7 +208,7 @@ func (ar *Reader) consumeHeader() (*Header, os.Error) {
 			return nil, err
 		}
 		if int64(fnLength) > hdr.Size {
-			return nil, os.NewError("ar: invalid bsd long filename in file")
+			return nil, errors.New("ar: invalid bsd long filename in file")
 		}
 		longFn := make([]byte, fnLength)
 		nread, err = io.ReadFull(ar.r, longFn)
@@ -223,9 +224,9 @@ func (ar *Reader) consumeHeader() (*Header, os.Error) {
 		// We must have read a GNU-style long filename section for this lookup
 		// to succeed.
 		if ar.gnuLongFn == nil {
-			return nil, os.NewError("ar: encountered gnu-style long fn without corresponding long fn section")
+			return nil, errors.New("ar: encountered gnu-style long fn without corresponding long fn section")
 		}
-		gnuOffset, err := strconv.Atoi64(fileName[1:])
+		gnuOffset, err := strconv.ParseInt(fileName[1:], 10, 64)
 		if err != nil {
 			return nil, err
 		}
@@ -237,7 +238,7 @@ func (ar *Reader) consumeHeader() (*Header, os.Error) {
 			hdr.Name = fnStr
 		} else {
 			// The offset overflows our long filename section
-			return nil, os.NewError("ar: gnu long filename lookup out of bounds")
+			return nil, errors.New("ar: gnu long filename lookup out of bounds")
 		}
 
 		// Regular short file name

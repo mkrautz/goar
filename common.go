@@ -7,7 +7,7 @@
 // only supports writing in the BSD format.
 package ar
 
-import "os"
+import "errors"
 
 // A Header represents a single file header in an ar archive.
 type Header struct {
@@ -26,15 +26,15 @@ var (
 )
 
 var (
-	ErrMissingGlobalHeader = os.NewError("ar: missing global header")
-	ErrFileHeader          = os.NewError("ar: invalid ar file header")
-	ErrWriteAfterClose     = os.NewError("ar: write after close")
-	ErrWriteTooLong        = os.NewError("ar: write too long")
+	ErrMissingGlobalHeader = errors.New("ar: missing global header")
+	ErrFileHeader          = errors.New("ar: invalid ar file header")
+	ErrWriteAfterClose     = errors.New("ar: write after close")
+	ErrWriteTooLong        = errors.New("ar: write too long")
 )
 
 type skippingWriter struct{}
 
-func (sw skippingWriter) Write(buf []byte) (int, os.Error) {
+func (sw skippingWriter) Write(buf []byte) (int, error) {
 	return len(buf), nil
 }
 
@@ -51,13 +51,13 @@ func nulTerminated(buf []byte) string {
 // gnuArString reads a linefeed terminated string from buf.
 // If a linefeed character is not found in buf, the function
 // returns an error.
-func gnuArString(buf []byte) (string, os.Error) {
+func gnuArString(buf []byte) (string, error) {
 	for i := 0; i < len(buf); i++ {
 		if buf[i] == '\n' {
 			return string(buf[:i]), nil
 		}
 	}
-	return "", os.NewError("ar: missing linefeed in parsing ar string")
+	return "", errors.New("ar: missing linefeed in parsing ar string")
 }
 
 // arString reads a whitespace terminated string from the string in.
