@@ -105,7 +105,7 @@ var lionArchive []archiveTest = []archiveTest{
 	},
 }
 
-func testRead(t *testing.T, r io.Reader, testArchive []archiveTest) {
+func read(t *testing.T, r io.Reader, testArchive []archiveTest, readBody bool) {
 	ar := NewReader(r)
 	for _, testEntry := range testArchive {
 		hdr, err := ar.Next()
@@ -115,15 +115,23 @@ func testRead(t *testing.T, r io.Reader, testArchive []archiveTest) {
 		if !headerCmp(hdr, testEntry.hdr) {
 			t.Fatalf("header mismatch:\nread = %v\norig = %v", hdr, testEntry.hdr)
 		}
-		fbuf := make([]byte, hdr.Size)
-		_, err = io.ReadFull(ar, fbuf)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !bytes.Equal(fbuf, testEntry.data) {
-			t.Fatalf("data mismatch\nread = %v\norig = %v", fbuf, testEntry.data)
+		if readBody {
+			fbuf := make([]byte, hdr.Size)
+			_, err = io.ReadFull(ar, fbuf)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(fbuf, testEntry.data) {
+				t.Fatalf("data mismatch\nread = %v\norig = %v", fbuf, testEntry.data)
+			}
 		}
 	}
+}
+
+func testRead(t *testing.T, r io.ReadSeeker, testArchive []archiveTest) {
+	read(t, r, testArchive, true)
+	r.Seek(0, 0)
+	read(t, r, testArchive, false)
 }
 
 // Test the we can correctly read and parse a FreeBSD 8.2 generated ar file.
@@ -139,7 +147,7 @@ func TestReadFreeBSD82LibArchive(t *testing.T) {
 
 // Test the we can correctly read and parse a Mac OS X Lion generated ar file.
 // It is generated in the same way as the FreeBSD archive ahove, but ar on OS X
-// seems to pad the archived files with a lot of newlines. 
+// seems to pad the archived files with a lot of newlines.
 // Attempting to "ar x" the archive also reproduces the newlines in the extracted
 // files, so they are not a form of padding, but are intended to be there, somehow.
 func TestReadMacOSXLionOld(t *testing.T) {
@@ -150,24 +158,4 @@ func TestReadMacOSXLionOld(t *testing.T) {
 	}
 	defer f.Close()
 	testRead(t, f, lionArchive)
-}
-
-// Test that we can correctly skip data bytes in a file
-func TestDataSkipping(t *testing.T) {
-	f, err := os.Open("testdata/test-bsd-freebsd82-libarchive.ar")
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	r := NewReader(f)
-	for _, testEntry := range fbsd82Archive {
-		hdr, err := r.Next()
-		if err != nil {
-			t.Error(err)
-			return
-		}
-		if !headerCmp(hdr, testEntry.hdr) {
-			t.Fatalf("header mismatch:\nread = %v\norig = %v", hdr, testEntry.hdr)
-		}
-	}
 }
