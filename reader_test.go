@@ -105,6 +105,64 @@ var lionArchive []archiveTest = []archiveTest{
 	},
 }
 
+var linuxArchive []archiveTest = []archiveTest{
+	{
+		&Header{
+			Name:  "0",
+			Mode:  0100770,
+			Mtime: 1369126995,
+			Uid:   0,
+			Gid:   1001,
+			Size:  0,
+		},
+		[]byte{},
+	},
+	{
+		&Header{
+			Name:  "1",
+			Mode:  0100770,
+			Mtime: 1369127013,
+			Uid:   0,
+			Gid:   1001,
+			Size:  1,
+		},
+		[]byte("a"),
+	},
+	{
+		&Header{
+			Name:  "2",
+			Mode:  0100770,
+			Mtime: 1369127016,
+			Uid:   0,
+			Gid:   1001,
+			Size:  2,
+		},
+		[]byte("ab"),
+	},
+	{
+		&Header{
+			Name:  "3",
+			Mode:  0100770,
+			Mtime: 1369127019,
+			Uid:   0,
+			Gid:   1001,
+			Size:  3,
+		},
+		[]byte("abc"),
+	},
+	{
+		&Header{
+			Name:  "long-long-file-name",
+			Mode:  0100770,
+			Mtime: 1369127028,
+			Uid:   0,
+			Gid:   1001,
+			Size:  25,
+		},
+		[]byte("Gopher's name is Gordon.\n"),
+	},
+}
+
 func read(t *testing.T, r io.Reader, testArchive []archiveTest, readBody bool) {
 	ar := NewReader(r)
 	for _, testEntry := range testArchive {
@@ -113,7 +171,7 @@ func read(t *testing.T, r io.Reader, testArchive []archiveTest, readBody bool) {
 			t.Fatal(err)
 		}
 		if !headerCmp(hdr, testEntry.hdr) {
-			t.Fatalf("header mismatch:\nread = %v\norig = %v", hdr, testEntry.hdr)
+			t.Fatalf("header mismatch:\nread = %+v\norig = %+v", hdr, testEntry.hdr)
 		}
 		if readBody {
 			fbuf := make([]byte, hdr.Size)
@@ -125,6 +183,11 @@ func read(t *testing.T, r io.Reader, testArchive []archiveTest, readBody bool) {
 				t.Fatalf("data mismatch\nread = %v\norig = %v", fbuf, testEntry.data)
 			}
 		}
+	}
+
+	_, err := ar.Next()
+	if err != io.EOF {
+		t.Fatalf("expected EOF, got %v", err)
 	}
 }
 
@@ -138,8 +201,7 @@ func testRead(t *testing.T, r io.ReadSeeker, testArchive []archiveTest) {
 func TestReadFreeBSD82LibArchive(t *testing.T) {
 	f, err := os.Open("testdata/test-bsd-freebsd82-libarchive.ar")
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatal(err)
 	}
 	defer f.Close()
 	testRead(t, f, fbsd82Archive)
@@ -153,9 +215,17 @@ func TestReadFreeBSD82LibArchive(t *testing.T) {
 func TestReadMacOSXLionOld(t *testing.T) {
 	f, err := os.Open("testdata/test-bsd-macosx.ar")
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatal(err)
 	}
 	defer f.Close()
 	testRead(t, f, lionArchive)
+}
+
+func TestReadLinux(t *testing.T) {
+	f, err := os.Open("testdata/test-gnu-linux.ar")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	testRead(t, f, linuxArchive)
 }
