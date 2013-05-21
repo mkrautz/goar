@@ -243,7 +243,10 @@ func (ar *Reader) consumeHeader() (*Header, error) {
 			if err != nil {
 				return nil, err
 			}
-			hdr.Name = fnStr
+			if fnStr[len(fnStr)-1] != '/' {
+				return nil, errors.New("ar: gnu long filename is not terminated")
+			}
+			hdr.Name = fnStr[:len(fnStr)-1]
 		} else {
 			// The offset overflows our long filename section
 			return nil, errors.New("ar: gnu long filename lookup out of bounds")
