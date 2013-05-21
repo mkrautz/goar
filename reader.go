@@ -122,6 +122,7 @@ func (ar *Reader) Read(b []byte) (n int, err error) {
 		b = b[:ar.dataRemain]
 	}
 	n, err = ar.r.Read(b)
+	ar.offset += int64(n)
 	ar.dataRemain -= int64(n)
 	if ar.dataRemain == 0 {
 		err = io.EOF
