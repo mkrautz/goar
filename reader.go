@@ -7,7 +7,6 @@ package ar
 import (
 	"errors"
 	"io"
-
 	"strconv"
 	"strings"
 )
@@ -166,19 +165,25 @@ func (ar *Reader) consumeHeader() (*Header, error) {
 		return nil, ErrFileHeader
 	}
 
-	hdr.Mtime, err = strconv.ParseInt(mtime, 10, 64)
-	if err != nil {
-		return nil, err
+	if mtime != "" {
+		hdr.Mtime, err = strconv.ParseInt(mtime, 10, 64)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	hdr.Uid, err = strconv.Atoi(uid)
-	if err != nil {
-		return nil, err
+	if uid != "" {
+		hdr.Uid, err = strconv.Atoi(uid)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	hdr.Gid, err = strconv.Atoi(gid)
-	if err != nil {
-		return nil, err
+	if gid != "" {
+		hdr.Gid, err = strconv.Atoi(gid)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	hdr.Size, err = strconv.ParseInt(size, 10, 64)
@@ -186,9 +191,11 @@ func (ar *Reader) consumeHeader() (*Header, error) {
 		return nil, err
 	}
 
-	hdr.Mode, err = strconv.ParseInt(mode, 8, 64)
-	if err != nil {
-		return nil, err
+	if mode != "" {
+		hdr.Mode, err = strconv.ParseInt(mode, 8, 64)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// GNU-style ar archives use '/' as a filename terminator for everything
