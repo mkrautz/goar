@@ -7,7 +7,6 @@ package ar
 import (
 	"errors"
 	"io"
-
 	"strconv"
 	"strings"
 )
@@ -123,6 +122,7 @@ func (ar *Reader) Read(b []byte) (n int, err error) {
 		b = b[:ar.dataRemain]
 	}
 	n, err = ar.r.Read(b)
+	ar.offset += int64(n)
 	ar.dataRemain -= int64(n)
 	if ar.dataRemain == 0 {
 		err = io.EOF
@@ -166,19 +166,25 @@ func (ar *Reader) consumeHeader() (*Header, error) {
 		return nil, ErrFileHeader
 	}
 
-	hdr.Mtime, err = strconv.ParseInt(mtime, 10, 64)
-	if err != nil {
-		return nil, err
+	if mtime != "" {
+		hdr.Mtime, err = strconv.ParseInt(mtime, 10, 64)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	hdr.Uid, err = strconv.Atoi(uid)
-	if err != nil {
-		return nil, err
+	if uid != "" {
+		hdr.Uid, err = strconv.Atoi(uid)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	hdr.Gid, err = strconv.Atoi(gid)
-	if err != nil {
-		return nil, err
+	if gid != "" {
+		hdr.Gid, err = strconv.Atoi(gid)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	hdr.Size, err = strconv.ParseInt(size, 10, 64)
@@ -186,9 +192,11 @@ func (ar *Reader) consumeHeader() (*Header, error) {
 		return nil, err
 	}
 
-	hdr.Mode, err = strconv.ParseInt(mode, 8, 64)
-	if err != nil {
-		return nil, err
+	if mode != "" {
+		hdr.Mode, err = strconv.ParseInt(mode, 8, 64)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// GNU-style ar archives use '/' as a filename terminator for everything
@@ -235,7 +243,10 @@ func (ar *Reader) consumeHeader() (*Header, error) {
 			if err != nil {
 				return nil, err
 			}
-			hdr.Name = fnStr
+			if fnStr[len(fnStr)-1] != '/' {
+				return nil, errors.New("ar: gnu long filename is not terminated")
+			}
+			hdr.Name = fnStr[:len(fnStr)-1]
 		} else {
 			// The offset overflows our long filename section
 			return nil, errors.New("ar: gnu long filename lookup out of bounds")

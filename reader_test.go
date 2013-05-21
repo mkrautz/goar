@@ -105,7 +105,65 @@ var lionArchive []archiveTest = []archiveTest{
 	},
 }
 
-func testRead(t *testing.T, r io.Reader, testArchive []archiveTest) {
+var linuxArchive []archiveTest = []archiveTest{
+	{
+		&Header{
+			Name:  "0",
+			Mode:  0100770,
+			Mtime: 1369126995,
+			Uid:   0,
+			Gid:   1001,
+			Size:  0,
+		},
+		[]byte{},
+	},
+	{
+		&Header{
+			Name:  "1",
+			Mode:  0100770,
+			Mtime: 1369127013,
+			Uid:   0,
+			Gid:   1001,
+			Size:  1,
+		},
+		[]byte("a"),
+	},
+	{
+		&Header{
+			Name:  "2",
+			Mode:  0100770,
+			Mtime: 1369127016,
+			Uid:   0,
+			Gid:   1001,
+			Size:  2,
+		},
+		[]byte("ab"),
+	},
+	{
+		&Header{
+			Name:  "3",
+			Mode:  0100770,
+			Mtime: 1369127019,
+			Uid:   0,
+			Gid:   1001,
+			Size:  3,
+		},
+		[]byte("abc"),
+	},
+	{
+		&Header{
+			Name:  "long-long-file-name",
+			Mode:  0100770,
+			Mtime: 1369127028,
+			Uid:   0,
+			Gid:   1001,
+			Size:  25,
+		},
+		[]byte("Gopher's name is Gordon.\n"),
+	},
+}
+
+func read(t *testing.T, r io.Reader, testArchive []archiveTest, readBody bool) {
 	ar := NewReader(r)
 	for _, testEntry := range testArchive {
 		hdr, err := ar.Next()
@@ -113,25 +171,37 @@ func testRead(t *testing.T, r io.Reader, testArchive []archiveTest) {
 			t.Fatal(err)
 		}
 		if !headerCmp(hdr, testEntry.hdr) {
-			t.Fatalf("header mismatch:\nread = %v\norig = %v", hdr, testEntry.hdr)
+			t.Fatalf("header mismatch:\nread = %+v\norig = %+v", hdr, testEntry.hdr)
 		}
-		fbuf := make([]byte, hdr.Size)
-		_, err = io.ReadFull(ar, fbuf)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !bytes.Equal(fbuf, testEntry.data) {
-			t.Fatalf("data mismatch\nread = %v\norig = %v", fbuf, testEntry.data)
+		if readBody {
+			fbuf := make([]byte, hdr.Size)
+			_, err = io.ReadFull(ar, fbuf)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(fbuf, testEntry.data) {
+				t.Fatalf("data mismatch\nread = %v\norig = %v", fbuf, testEntry.data)
+			}
 		}
 	}
+
+	_, err := ar.Next()
+	if err != io.EOF {
+		t.Fatalf("expected EOF, got %v", err)
+	}
+}
+
+func testRead(t *testing.T, r io.ReadSeeker, testArchive []archiveTest) {
+	read(t, r, testArchive, true)
+	r.Seek(0, 0)
+	read(t, r, testArchive, false)
 }
 
 // Test the we can correctly read and parse a FreeBSD 8.2 generated ar file.
 func TestReadFreeBSD82LibArchive(t *testing.T) {
 	f, err := os.Open("testdata/test-bsd-freebsd82-libarchive.ar")
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatal(err)
 	}
 	defer f.Close()
 	testRead(t, f, fbsd82Archive)
@@ -139,35 +209,23 @@ func TestReadFreeBSD82LibArchive(t *testing.T) {
 
 // Test the we can correctly read and parse a Mac OS X Lion generated ar file.
 // It is generated in the same way as the FreeBSD archive ahove, but ar on OS X
-// seems to pad the archived files with a lot of newlines. 
+// seems to pad the archived files with a lot of newlines.
 // Attempting to "ar x" the archive also reproduces the newlines in the extracted
 // files, so they are not a form of padding, but are intended to be there, somehow.
 func TestReadMacOSXLionOld(t *testing.T) {
 	f, err := os.Open("testdata/test-bsd-macosx.ar")
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatal(err)
 	}
 	defer f.Close()
 	testRead(t, f, lionArchive)
 }
 
-// Test that we can correctly skip data bytes in a file
-func TestDataSkipping(t *testing.T) {
-	f, err := os.Open("testdata/test-bsd-freebsd82-libarchive.ar")
+func TestReadLinux(t *testing.T) {
+	f, err := os.Open("testdata/test-gnu-linux.ar")
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatal(err)
 	}
-	r := NewReader(f)
-	for _, testEntry := range fbsd82Archive {
-		hdr, err := r.Next()
-		if err != nil {
-			t.Error(err)
-			return
-		}
-		if !headerCmp(hdr, testEntry.hdr) {
-			t.Fatalf("header mismatch:\nread = %v\norig = %v", hdr, testEntry.hdr)
-		}
-	}
+	defer f.Close()
+	testRead(t, f, linuxArchive)
 }
