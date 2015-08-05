@@ -154,12 +154,12 @@ func (ar *Reader) consumeHeader() (*Header, error) {
 	ar.offset += int64(nread)
 
 	hdr := &Header{}
-	fileName := arString(string(fhdr[0:15]))
-	mtime := arString(string(fhdr[16:27]))
-	uid := arString(string(fhdr[28:33]))
-	gid := arString(string(fhdr[34:39]))
-	mode := arString(string(fhdr[40:47]))
-	size := arString(string(fhdr[48:57]))
+	fileName := arString(string(fhdr[0:16]))
+	mtime := arString(string(fhdr[16:28]))
+	uid := arString(string(fhdr[28:34]))
+	gid := arString(string(fhdr[34:40]))
+	mode := arString(string(fhdr[40:48]))
+	size := arString(string(fhdr[48:58]))
 	magic := arString(string(fhdr[58:60]))
 
 	if magic != fileHeaderMagic {
