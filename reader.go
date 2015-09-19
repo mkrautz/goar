@@ -21,7 +21,7 @@ import (
 //	tr := ar.NewReader(r)
 //	for {
 //		hdr, err := tr.Next()
-//		if err == os.EOF {
+//		if err == io.EOF {
 //			// end of archive
 //			break
 //		}
