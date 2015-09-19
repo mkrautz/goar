@@ -21,7 +21,7 @@ import (
 //	tr := ar.NewReader(r)
 //	for {
 //		hdr, err := tr.Next()
-//		if err == os.EOF {
+//		if err == io.EOF {
 //			// end of archive
 //			break
 //		}
@@ -112,7 +112,7 @@ func (ar *Reader) Next() (hdr *Header, err error) {
 }
 
 // Read reads from the current entry in the archive.
-// It returns 0, os.EOF when it reaches the end of that entry,
+// It returns 0, io.EOF when it reaches the end of that entry,
 // until Next is called to advance to the next entry.
 func (ar *Reader) Read(b []byte) (n int, err error) {
 	if ar.dataRemain == 0 {
